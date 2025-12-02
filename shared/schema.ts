@@ -48,6 +48,20 @@ export const macdDataSchema = z.object({
 
 export type MACDData = z.infer<typeof macdDataSchema>;
 
+export const technicalIndicatorsSchema = z.object({
+  rsi: z.number().nullable(),
+  sma20: z.number().nullable(),
+  sma50: z.number().nullable(),
+  sma200: z.number().nullable(),
+  bollingerUpper: z.number().nullable(),
+  bollingerMiddle: z.number().nullable(),
+  bollingerLower: z.number().nullable(),
+  atr: z.number().nullable(),
+  momentum: z.number().nullable(),
+});
+
+export type TechnicalIndicators = z.infer<typeof technicalIndicatorsSchema>;
+
 export const analystRatingSchema = z.object({
   symbol: z.string(),
   strongBuy: z.number(),
@@ -107,6 +121,7 @@ export const stockDetailSchema = z.object({
   metrics: stockMetricsSchema,
   priceHistory: z.array(priceHistoryPointSchema),
   macd: z.array(macdDataSchema),
+  technicalIndicators: technicalIndicatorsSchema.nullable(),
   analystRatings: analystRatingSchema.nullable(),
   zacksRating: zacksRatingSchema.nullable(),
   news: z.array(stockNewsSchema),

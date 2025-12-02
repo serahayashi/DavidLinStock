@@ -3,6 +3,7 @@ import type {
   StockMetrics, 
   PriceHistoryPoint, 
   MACDData,
+  TechnicalIndicators,
   AnalystRating,
   StockSearchResult,
   StockDetail,
@@ -12,6 +13,9 @@ import type {
 
 // @ts-ignore - zacks-api doesn't have type definitions
 import * as zacksApi from "zacks-api";
+import YahooFinance from "yahoo-finance2";
+
+const yahooFinance = new YahooFinance();
 
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
 const ALPHA_VANTAGE_API_KEY = process.env.ALPHA_VANTAGE_API_KEY;
@@ -139,6 +143,49 @@ export async function getMetrics(symbol: string): Promise<StockMetrics> {
   }
 }
 
+async function fetchYahooFinancePriceHistory(symbol: string, days: number = 180): Promise<PriceHistoryPoint[]> {
+  console.log(`Fetching Yahoo Finance data for ${symbol}...`);
+  
+  try {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    
+    const result = await yahooFinance.chart(symbol, {
+      period1: startDate,
+      period2: endDate,
+      interval: "1d" as const,
+    });
+    
+    const quotes = (result as any)?.quotes;
+    if (!quotes || !Array.isArray(quotes) || quotes.length === 0) {
+      console.log("No data from Yahoo Finance");
+      return [];
+    }
+    
+    console.log(`Yahoo Finance returned ${quotes.length} days of data`);
+    
+    const points: PriceHistoryPoint[] = [];
+    for (const quote of quotes) {
+      if (quote.date && quote.close !== null && quote.close !== undefined) {
+        points.push({
+          date: new Date(quote.date).toISOString().split("T")[0],
+          open: quote.open || quote.close,
+          high: quote.high || quote.close,
+          low: quote.low || quote.close,
+          close: quote.close,
+          volume: quote.volume || 0,
+        });
+      }
+    }
+    
+    return points;
+  } catch (error) {
+    console.error("Error fetching Yahoo Finance price history:", error);
+    return [];
+  }
+}
+
 async function fetchAlphaVantagePriceHistory(symbol: string): Promise<PriceHistoryPoint[]> {
   if (!ALPHA_VANTAGE_API_KEY) {
     console.log("Alpha Vantage API key not configured");
@@ -205,7 +252,13 @@ async function fetchAlphaVantagePriceHistory(symbol: string): Promise<PriceHisto
 }
 
 export async function getPriceHistory(symbol: string, days: number = 180): Promise<PriceHistoryPoint[]> {
-  // Try Finnhub first
+  // Try Yahoo Finance first (most reliable, no API key needed)
+  const yahooData = await fetchYahooFinancePriceHistory(symbol, days);
+  if (yahooData.length > 0) {
+    return yahooData;
+  }
+  
+  // Fallback to Finnhub
   try {
     const to = Math.floor(Date.now() / 1000);
     const from = to - (days * 24 * 60 * 60);
@@ -236,7 +289,7 @@ export async function getPriceHistory(symbol: string, days: number = 180): Promi
     console.log("Finnhub candle endpoint failed, trying Alpha Vantage...");
   }
 
-  // Fallback to Alpha Vantage
+  // Final fallback to Alpha Vantage
   return fetchAlphaVantagePriceHistory(symbol);
 }
 
@@ -293,6 +346,104 @@ export function calculateMACD(priceHistory: PriceHistoryPoint[]): MACDData[] {
   }
   
   return result;
+}
+
+function calculateSMA(data: number[], period: number): number | null {
+  if (data.length < period) return null;
+  const slice = data.slice(-period);
+  return slice.reduce((sum, val) => sum + val, 0) / period;
+}
+
+function calculateRSI(closes: number[], period: number = 14): number | null {
+  if (closes.length < period + 1) return null;
+  
+  const changes: number[] = [];
+  for (let i = 1; i < closes.length; i++) {
+    changes.push(closes[i] - closes[i - 1]);
+  }
+  
+  const recentChanges = changes.slice(-period);
+  let gains = 0;
+  let losses = 0;
+  
+  for (const change of recentChanges) {
+    if (change > 0) gains += change;
+    else losses += Math.abs(change);
+  }
+  
+  const avgGain = gains / period;
+  const avgLoss = losses / period;
+  
+  if (avgLoss === 0) return 100;
+  
+  const rs = avgGain / avgLoss;
+  return 100 - (100 / (1 + rs));
+}
+
+function calculateBollingerBands(closes: number[], period: number = 20): { upper: number | null; middle: number | null; lower: number | null } {
+  if (closes.length < period) {
+    return { upper: null, middle: null, lower: null };
+  }
+  
+  const slice = closes.slice(-period);
+  const middle = slice.reduce((sum, val) => sum + val, 0) / period;
+  
+  const squaredDiffs = slice.map(val => Math.pow(val - middle, 2));
+  const variance = squaredDiffs.reduce((sum, val) => sum + val, 0) / period;
+  const stdDev = Math.sqrt(variance);
+  
+  return {
+    upper: middle + (2 * stdDev),
+    middle,
+    lower: middle - (2 * stdDev),
+  };
+}
+
+function calculateATR(priceHistory: PriceHistoryPoint[], period: number = 14): number | null {
+  if (priceHistory.length < period + 1) return null;
+  
+  const trueRanges: number[] = [];
+  for (let i = 1; i < priceHistory.length; i++) {
+    const high = priceHistory[i].high;
+    const low = priceHistory[i].low;
+    const prevClose = priceHistory[i - 1].close;
+    
+    const tr = Math.max(
+      high - low,
+      Math.abs(high - prevClose),
+      Math.abs(low - prevClose)
+    );
+    trueRanges.push(tr);
+  }
+  
+  const recentTR = trueRanges.slice(-period);
+  return recentTR.reduce((sum, val) => sum + val, 0) / period;
+}
+
+function calculateMomentum(closes: number[], period: number = 10): number | null {
+  if (closes.length < period + 1) return null;
+  return closes[closes.length - 1] - closes[closes.length - 1 - period];
+}
+
+export function calculateTechnicalIndicators(priceHistory: PriceHistoryPoint[]): TechnicalIndicators | null {
+  if (priceHistory.length < 20) {
+    return null;
+  }
+  
+  const closes = priceHistory.map(p => p.close);
+  const bollinger = calculateBollingerBands(closes, 20);
+  
+  return {
+    rsi: calculateRSI(closes, 14),
+    sma20: calculateSMA(closes, 20),
+    sma50: calculateSMA(closes, 50),
+    sma200: calculateSMA(closes, 200),
+    bollingerUpper: bollinger.upper,
+    bollingerMiddle: bollinger.middle,
+    bollingerLower: bollinger.lower,
+    atr: calculateATR(priceHistory, 14),
+    momentum: calculateMomentum(closes, 10),
+  };
 }
 
 export async function getAnalystRatings(symbol: string): Promise<AnalystRating | null> {
@@ -424,12 +575,14 @@ export async function getStockDetail(symbol: string): Promise<StockDetail | null
     }
 
     const macd = calculateMACD(priceHistory);
+    const technicalIndicators = calculateTechnicalIndicators(priceHistory);
 
     return {
       quote,
       metrics,
       priceHistory,
       macd,
+      technicalIndicators,
       analystRatings,
       zacksRating,
       news,

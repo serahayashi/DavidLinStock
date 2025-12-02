@@ -12,6 +12,7 @@ import { MACDChart } from "@/components/macd-chart";
 import { AnalystRatings } from "@/components/analyst-ratings";
 import { ZacksRatingDisplay } from "@/components/zacks-rating";
 import { StockNewsSection } from "@/components/stock-news";
+import { TechnicalAnalysis } from "@/components/technical-analysis";
 import { MetricCard } from "@/components/metric-card";
 import { WatchlistButton } from "@/components/watchlist-button";
 import type { StockDetail } from "@shared/schema";
@@ -208,6 +209,12 @@ export default function StockDetailPage() {
                 isLoading={isLoading}
               />
             </div>
+
+            <TechnicalAnalysis
+              indicators={data?.technicalIndicators ?? null}
+              currentPrice={data?.quote.price}
+              isLoading={isLoading}
+            />
 
             <AnalystRatings 
               ratings={data?.analystRatings ?? null}
