@@ -9,7 +9,9 @@ import type {
 } from "@shared/schema";
 
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
+const ALPHA_VANTAGE_API_KEY = process.env.ALPHA_VANTAGE_API_KEY;
 const BASE_URL = "https://finnhub.io/api/v1";
+const ALPHA_VANTAGE_URL = "https://www.alphavantage.co/query";
 
 class FinnhubError extends Error {
   status: number;
@@ -132,7 +134,57 @@ export async function getMetrics(symbol: string): Promise<StockMetrics> {
   }
 }
 
+async function fetchAlphaVantagePriceHistory(symbol: string): Promise<PriceHistoryPoint[]> {
+  if (!ALPHA_VANTAGE_API_KEY) {
+    console.log("Alpha Vantage API key not configured");
+    return [];
+  }
+
+  try {
+    const url = `${ALPHA_VANTAGE_URL}?function=TIME_SERIES_DAILY&symbol=${symbol}&outputsize=full&apikey=${ALPHA_VANTAGE_API_KEY}`;
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      console.error("Alpha Vantage API error:", response.status);
+      return [];
+    }
+
+    const data = await response.json();
+    
+    if (data["Error Message"] || data["Note"]) {
+      console.error("Alpha Vantage error:", data["Error Message"] || data["Note"]);
+      return [];
+    }
+
+    const timeSeries = data["Time Series (Daily)"];
+    if (!timeSeries) {
+      return [];
+    }
+
+    const points: PriceHistoryPoint[] = [];
+    const dates = Object.keys(timeSeries).sort();
+    
+    for (const date of dates.slice(-180)) {
+      const dayData = timeSeries[date];
+      points.push({
+        date,
+        open: parseFloat(dayData["1. open"]),
+        high: parseFloat(dayData["2. high"]),
+        low: parseFloat(dayData["3. low"]),
+        close: parseFloat(dayData["4. close"]),
+        volume: parseInt(dayData["5. volume"]),
+      });
+    }
+
+    return points;
+  } catch (error) {
+    console.error("Error fetching Alpha Vantage price history:", error);
+    return [];
+  }
+}
+
 export async function getPriceHistory(symbol: string, days: number = 180): Promise<PriceHistoryPoint[]> {
+  // Try Finnhub first
   try {
     const to = Math.floor(Date.now() / 1000);
     const from = to - (days * 24 * 60 * 60);
@@ -144,28 +196,27 @@ export async function getPriceHistory(symbol: string, days: number = 180): Promi
       to: to.toString(),
     });
 
-    if (data.s !== "ok" || !data.c) {
-      return [];
+    if (data.s === "ok" && data.c && data.c.length > 0) {
+      const points: PriceHistoryPoint[] = [];
+      for (let i = 0; i < data.c.length; i++) {
+        const date = new Date(data.t[i] * 1000);
+        points.push({
+          date: date.toISOString().split("T")[0],
+          close: data.c[i],
+          high: data.h[i],
+          low: data.l[i],
+          open: data.o[i],
+          volume: data.v[i],
+        });
+      }
+      return points;
     }
-
-    const points: PriceHistoryPoint[] = [];
-    for (let i = 0; i < data.c.length; i++) {
-      const date = new Date(data.t[i] * 1000);
-      points.push({
-        date: date.toISOString().split("T")[0],
-        close: data.c[i],
-        high: data.h[i],
-        low: data.l[i],
-        open: data.o[i],
-        volume: data.v[i],
-      });
-    }
-
-    return points;
   } catch (error) {
-    console.error("Error fetching price history:", error);
-    return [];
+    console.log("Finnhub candle endpoint failed, trying Alpha Vantage...");
   }
+
+  // Fallback to Alpha Vantage
+  return fetchAlphaVantagePriceHistory(symbol);
 }
 
 function calculateEMA(data: number[], period: number): number[] {
