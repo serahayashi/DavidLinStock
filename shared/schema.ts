@@ -94,6 +94,32 @@ export type WatchlistItem = z.infer<typeof watchlistItemSchema>;
 export const insertWatchlistItemSchema = watchlistItemSchema.omit({ id: true, addedAt: true });
 export type InsertWatchlistItem = z.infer<typeof insertWatchlistItemSchema>;
 
+export const shareTokenSchema = z.object({
+  id: z.string(),
+  ownerId: z.string(),
+  label: z.string().nullable(),
+  createdAt: z.number(),
+  isActive: z.boolean(),
+});
+
+export type ShareToken = z.infer<typeof shareTokenSchema>;
+
+export const insertShareTokenSchema = shareTokenSchema.omit({ id: true, createdAt: true, isActive: true });
+export type InsertShareToken = z.infer<typeof insertShareTokenSchema>;
+
+export const savedWatchlistSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  shareId: z.string(),
+  alias: z.string().nullable(),
+  addedAt: z.number(),
+});
+
+export type SavedWatchlist = z.infer<typeof savedWatchlistSchema>;
+
+export const insertSavedWatchlistSchema = savedWatchlistSchema.omit({ id: true, addedAt: true });
+export type InsertSavedWatchlist = z.infer<typeof insertSavedWatchlistSchema>;
+
 export const zacksRatingSchema = z.object({
   symbol: z.string(),
   rank: z.number().min(1).max(5),

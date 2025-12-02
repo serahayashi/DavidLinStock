@@ -35,6 +35,7 @@ client/
       home.tsx
       stock-detail.tsx
       watchlist.tsx
+      share.tsx          # View shared watchlists
       not-found.tsx
     lib/
       userId.ts        # UUID generation for anonymous users
@@ -63,6 +64,9 @@ shared/
 13. **Dark Mode**: System/light/dark theme support
 14. **Top Watchlist Stocks**: Homepage section showing top 10 most-watched stocks with Zacks ratings and RSI signals
 15. **WSB Trending Stocks**: Homepage section showing top 10 trending stocks from r/wallstreetbets with sentiment, mentions, Zacks ratings, and RSI signals (via ApeWisdom API)
+16. **Shareable Watchlists**: Create unique share links (nanoid-based) for your watchlist that others can view
+17. **Saved Watchlists**: Save other users' shared watchlists to your dashboard and view them in a tabbed interface
+18. **Share Page**: Public page at /share/:shareId to view shared watchlists with option to save
 
 ## API Endpoints
 - `GET /api/stocks/search?query={ticker}` - Search stocks
@@ -75,6 +79,14 @@ shared/
 - `DELETE /api/watchlist/{userId}/{symbol}` - Remove from watchlist
 - `GET /api/watchlist/{userId}/export` - Export watchlist as XML
 - `POST /api/watchlist/{userId}/import` - Import watchlist from XML
+- `POST /api/watchlist/{userId}/share` - Create a shareable link for the watchlist
+- `GET /api/watchlist/{userId}/shares` - Get all share tokens created by user
+- `DELETE /api/watchlist/{userId}/share/{shareId}` - Revoke a share token
+- `GET /api/share/{shareId}` - Get shared watchlist data (public)
+- `POST /api/watchlist/{userId}/saved` - Save a shared watchlist to dashboard
+- `GET /api/watchlist/{userId}/saved` - Get all saved watchlists
+- `DELETE /api/watchlist/{userId}/saved/{shareId}` - Remove a saved watchlist
+- `PATCH /api/watchlist/{userId}/saved/{shareId}` - Update saved watchlist alias
 
 ## Environment Variables
 - `FINNHUB_API_KEY` - Required for real-time quotes, metrics, analyst ratings, and news

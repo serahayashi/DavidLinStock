@@ -8,6 +8,7 @@ import { Header } from "@/components/header";
 import Home from "@/pages/home";
 import StockDetail from "@/pages/stock-detail";
 import Watchlist from "@/pages/watchlist";
+import SharePage from "@/pages/share";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -16,6 +17,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/stock/:symbol" component={StockDetail} />
       <Route path="/watchlist" component={Watchlist} />
+      <Route path="/share/:shareId" component={SharePage} />
       <Route component={NotFound} />
     </Switch>
   );

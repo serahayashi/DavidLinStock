@@ -366,5 +366,173 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/watchlist/:userId/share", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { label } = req.body;
+      
+      const watchlist = await storage.getWatchlist(userId);
+      if (watchlist.length === 0) {
+        return res.status(400).json({ error: "Cannot share an empty watchlist" });
+      }
+      
+      const shareToken = await storage.createShareToken(userId, label);
+      res.status(201).json({ 
+        shareId: shareToken.id,
+        shareUrl: `/share/${shareToken.id}`,
+        label: shareToken.label,
+        createdAt: shareToken.createdAt,
+      });
+    } catch (error) {
+      console.error("Share create error:", error);
+      res.status(500).json({ error: "Failed to create share link" });
+    }
+  });
+
+  app.get("/api/watchlist/:userId/shares", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const shares = await storage.getSharesByOwner(userId);
+      res.json(shares);
+    } catch (error) {
+      console.error("Get shares error:", error);
+      res.status(500).json({ error: "Failed to fetch shares" });
+    }
+  });
+
+  app.delete("/api/watchlist/:userId/share/:shareId", async (req, res) => {
+    try {
+      const { userId, shareId } = req.params;
+      const revoked = await storage.revokeShareToken(shareId, userId);
+      
+      if (!revoked) {
+        return res.status(404).json({ error: "Share not found or already revoked" });
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Share revoke error:", error);
+      res.status(500).json({ error: "Failed to revoke share" });
+    }
+  });
+
+  app.get("/api/share/:shareId", async (req, res) => {
+    try {
+      const { shareId } = req.params;
+      
+      const shareToken = await storage.getShareToken(shareId);
+      if (!shareToken) {
+        return res.status(404).json({ error: "Share not found or has been revoked" });
+      }
+      
+      const watchlist = await storage.getWatchlist(shareToken.ownerId);
+      
+      res.json({
+        shareId: shareToken.id,
+        label: shareToken.label,
+        createdAt: shareToken.createdAt,
+        symbols: watchlist.map(item => item.symbol),
+        stockCount: watchlist.length,
+      });
+    } catch (error) {
+      console.error("Share fetch error:", error);
+      res.status(500).json({ error: "Failed to fetch shared watchlist" });
+    }
+  });
+
+  app.post("/api/watchlist/:userId/saved", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { shareId, alias } = req.body;
+      
+      if (!shareId) {
+        return res.status(400).json({ error: "shareId is required" });
+      }
+      
+      const shareToken = await storage.getShareToken(shareId);
+      if (!shareToken) {
+        return res.status(404).json({ error: "Shared watchlist not found or has been revoked" });
+      }
+      
+      if (shareToken.ownerId === userId) {
+        return res.status(400).json({ error: "Cannot save your own watchlist" });
+      }
+      
+      const saved = await storage.saveWatchlist(userId, shareId, alias);
+      res.status(201).json(saved);
+    } catch (error) {
+      console.error("Save watchlist error:", error);
+      res.status(500).json({ error: "Failed to save watchlist" });
+    }
+  });
+
+  app.get("/api/watchlist/:userId/saved", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const savedWatchlists = await storage.getSavedWatchlists(userId);
+      
+      const hydratedWatchlists = await Promise.all(
+        savedWatchlists.map(async (saved) => {
+          const shareToken = await storage.getShareToken(saved.shareId);
+          if (!shareToken) {
+            return {
+              ...saved,
+              isActive: false,
+              symbols: [],
+              ownerLabel: null,
+            };
+          }
+          
+          const watchlist = await storage.getWatchlist(shareToken.ownerId);
+          return {
+            ...saved,
+            isActive: true,
+            symbols: watchlist.map(item => item.symbol),
+            ownerLabel: shareToken.label,
+          };
+        })
+      );
+      
+      res.json(hydratedWatchlists);
+    } catch (error) {
+      console.error("Get saved watchlists error:", error);
+      res.status(500).json({ error: "Failed to fetch saved watchlists" });
+    }
+  });
+
+  app.delete("/api/watchlist/:userId/saved/:shareId", async (req, res) => {
+    try {
+      const { userId, shareId } = req.params;
+      const removed = await storage.removeSavedWatchlist(userId, shareId);
+      
+      if (!removed) {
+        return res.status(404).json({ error: "Saved watchlist not found" });
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Remove saved watchlist error:", error);
+      res.status(500).json({ error: "Failed to remove saved watchlist" });
+    }
+  });
+
+  app.patch("/api/watchlist/:userId/saved/:shareId", async (req, res) => {
+    try {
+      const { userId, shareId } = req.params;
+      const { alias } = req.body;
+      
+      const updated = await storage.updateSavedWatchlistAlias(userId, shareId, alias);
+      
+      if (!updated) {
+        return res.status(404).json({ error: "Saved watchlist not found" });
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Update saved watchlist error:", error);
+      res.status(500).json({ error: "Failed to update saved watchlist" });
+    }
+  });
+
   return httpServer;
 }
