@@ -140,12 +140,21 @@ export async function getMetrics(symbol: string): Promise<StockMetrics> {
   }
 }
 
-async function fetchYahooFinancePriceHistory(symbol: string, days: number = 180): Promise<PriceHistoryPoint[]> {
+async function fetchYahooFinancePriceHistory(symbol: string, days: number = 1825): Promise<PriceHistoryPoint[]> {
   console.log(`Fetching Yahoo Finance data for ${symbol}...`);
   
   try {
     // Use Yahoo Finance REST API directly (no ESM package issues)
-    const range = days <= 30 ? "1mo" : days <= 90 ? "3mo" : "6mo";
+    // Support longer time ranges: 1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y
+    let range: string;
+    if (days <= 7) range = "5d";
+    else if (days <= 30) range = "1mo";
+    else if (days <= 90) range = "3mo";
+    else if (days <= 180) range = "6mo";
+    else if (days <= 365) range = "1y";
+    else if (days <= 730) range = "2y";
+    else range = "5y";
+    
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${range}&interval=1d`;
     
     const response = await fetch(url, {
@@ -578,7 +587,7 @@ export async function getStockDetail(symbol: string): Promise<StockDetail | null
     const [quote, metrics, priceHistory, analystRatings, zacksRating, news] = await Promise.all([
       getQuote(symbol),
       getMetrics(symbol),
-      getPriceHistory(symbol, 180),
+      getPriceHistory(symbol, 1825), // 5 years of data for all chart ranges
       getAnalystRatings(symbol),
       getZacksRating(symbol),
       getCompanyNews(symbol, 3),

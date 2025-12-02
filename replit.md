@@ -50,7 +50,7 @@ shared/
 ## Key Features
 1. **Stock Search**: Autocomplete search by ticker symbol
 2. **Stock Detail**: Price, P/E ratio, market cap, 52-week range, beta, EPS
-3. **Price Charts**: 30/90/180-day interactive price history charts (Yahoo Finance)
+3. **Price Charts**: Interactive price history charts with 1D/7D/30D/90D/180D/1Y/2Y/5Y time ranges (Yahoo Finance)
 4. **MACD Indicator**: Technical analysis with MACD, signal line, histogram
 5. **Technical Analysis**: RSI (14-period) with Buy/Sell/Hold recommendations, Moving Averages (20/50/200), Bollinger Bands, ATR, Momentum
 6. **RSI Recommendations**: Buy Signal (RSI < 30), Sell Signal (RSI > 70), Hold (RSI 30-70)

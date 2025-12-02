@@ -21,7 +21,18 @@ interface PriceChartProps {
   previousClose?: number;
 }
 
-type TimeRange = "30" | "90" | "180";
+type TimeRange = "1" | "7" | "30" | "90" | "180" | "365" | "730" | "1825";
+
+const timeRangeLabels: Record<TimeRange, string> = {
+  "1": "1D",
+  "7": "7D",
+  "30": "30D",
+  "90": "90D",
+  "180": "180D",
+  "365": "1Y",
+  "730": "2Y",
+  "1825": "5Y",
+};
 
 export function PriceChart({ data, isLoading, currentPrice, previousClose }: PriceChartProps) {
   const [timeRange, setTimeRange] = useState<TimeRange>("30");
@@ -30,6 +41,10 @@ export function PriceChart({ data, isLoading, currentPrice, previousClose }: Pri
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
+    // For longer time ranges, show year too
+    if (parseInt(timeRange) > 365) {
+      return date.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+    }
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
@@ -42,14 +57,16 @@ export function PriceChart({ data, isLoading, currentPrice, previousClose }: Pri
   const isPositive = currentPrice && previousClose ? currentPrice >= previousClose : true;
   const lineColor = isPositive ? "hsl(142, 76%, 36%)" : "hsl(0, 84%, 60%)";
 
+  const allTimeRanges: TimeRange[] = ["1", "7", "30", "90", "180", "365", "730", "1825"];
+
   if (isLoading) {
     return (
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-4">
           <CardTitle className="text-lg font-semibold">Price History</CardTitle>
-          <div className="flex gap-1">
-            {["30D", "90D", "180D"].map((label) => (
-              <Skeleton key={label} className="h-8 w-12" />
+          <div className="flex gap-1 flex-wrap justify-end">
+            {["1D", "7D", "30D", "90D", "1Y", "5Y"].map((label) => (
+              <Skeleton key={label} className="h-8 w-10" />
             ))}
           </div>
         </CardHeader>
@@ -64,20 +81,20 @@ export function PriceChart({ data, isLoading, currentPrice, previousClose }: Pri
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-4">
         <CardTitle className="text-lg font-semibold">Price History</CardTitle>
-        <div className="flex gap-1">
-          {(["30", "90", "180"] as TimeRange[]).map((range) => (
+        <div className="flex gap-1 flex-wrap justify-end">
+          {allTimeRanges.map((range) => (
             <Button
               key={range}
               variant={timeRange === range ? "default" : "outline"}
               size="sm"
               onClick={() => setTimeRange(range)}
               className={cn(
-                "font-mono text-xs",
+                "font-mono text-xs px-2",
                 timeRange === range && "pointer-events-none"
               )}
               data-testid={`button-timerange-${range}`}
             >
-              {range}D
+              {timeRangeLabels[range]}
             </Button>
           ))}
         </div>
