@@ -48,9 +48,10 @@ shared/
 4. **MACD Indicator**: Technical analysis with MACD, signal line, histogram
 5. **Analyst Ratings**: Aggregated Buy/Sell ratings from analysts
 6. **Zacks Rating**: 1-5 scale rating (Strong Buy to Strong Sell)
-7. **Watchlist Table**: Table view with sortable columns (price, change, P/E, Zacks)
-8. **Watchlist Cards**: Alternative card view for watchlist
-9. **Dark Mode**: System/light/dark theme support
+7. **Latest News**: 3 most recent news articles for each stock
+8. **Watchlist Table**: Table view with sortable columns (price, change, P/E, Zacks)
+9. **Watchlist Cards**: Alternative card view for watchlist
+10. **Dark Mode**: System/light/dark theme support
 
 ## API Endpoints
 - `GET /api/stocks/search?query={ticker}` - Search stocks
