@@ -89,6 +89,19 @@ export const zacksRatingSchema = z.object({
 
 export type ZacksRating = z.infer<typeof zacksRatingSchema>;
 
+export const stockNewsSchema = z.object({
+  id: z.number(),
+  headline: z.string(),
+  summary: z.string(),
+  source: z.string(),
+  url: z.string(),
+  image: z.string().nullable(),
+  datetime: z.number(),
+  related: z.string(),
+});
+
+export type StockNews = z.infer<typeof stockNewsSchema>;
+
 export const stockDetailSchema = z.object({
   quote: stockQuoteSchema,
   metrics: stockMetricsSchema,
@@ -96,6 +109,7 @@ export const stockDetailSchema = z.object({
   macd: z.array(macdDataSchema),
   analystRatings: analystRatingSchema.nullable(),
   zacksRating: zacksRatingSchema.nullable(),
+  news: z.array(stockNewsSchema),
 });
 
 export type StockDetail = z.infer<typeof stockDetailSchema>;

@@ -6,7 +6,8 @@ import type {
   AnalystRating,
   StockSearchResult,
   StockDetail,
-  ZacksRating
+  ZacksRating,
+  StockNews
 } from "@shared/schema";
 
 // @ts-ignore - zacks-api doesn't have type definitions
@@ -344,14 +345,50 @@ export async function getZacksRating(symbol: string): Promise<ZacksRating | null
   }
 }
 
+export async function getCompanyNews(symbol: string, limit: number = 3): Promise<StockNews[]> {
+  try {
+    const to = new Date();
+    const from = new Date();
+    from.setDate(from.getDate() - 30);
+    
+    const fromStr = from.toISOString().split("T")[0];
+    const toStr = to.toISOString().split("T")[0];
+    
+    const data = await fetchFinnhub("/company-news", { 
+      symbol, 
+      from: fromStr, 
+      to: toStr 
+    });
+    
+    if (!data || !Array.isArray(data) || data.length === 0) {
+      return [];
+    }
+
+    return data.slice(0, limit).map((item: any) => ({
+      id: item.id,
+      headline: item.headline || "",
+      summary: item.summary || "",
+      source: item.source || "",
+      url: item.url || "",
+      image: item.image || null,
+      datetime: item.datetime,
+      related: item.related || symbol,
+    }));
+  } catch (error) {
+    console.error("Error fetching company news:", error);
+    return [];
+  }
+}
+
 export async function getStockDetail(symbol: string): Promise<StockDetail | null> {
   try {
-    const [quote, metrics, priceHistory, analystRatings, zacksRating] = await Promise.all([
+    const [quote, metrics, priceHistory, analystRatings, zacksRating, news] = await Promise.all([
       getQuote(symbol),
       getMetrics(symbol),
       getPriceHistory(symbol, 180),
       getAnalystRatings(symbol),
       getZacksRating(symbol),
+      getCompanyNews(symbol, 3),
     ]);
 
     if (!quote) {
@@ -367,6 +404,7 @@ export async function getStockDetail(symbol: string): Promise<StockDetail | null
       macd,
       analystRatings,
       zacksRating,
+      news,
     };
   } catch (error) {
     console.error("Error fetching stock detail:", error);

@@ -11,6 +11,7 @@ import { PriceChart } from "@/components/price-chart";
 import { MACDChart } from "@/components/macd-chart";
 import { AnalystRatings } from "@/components/analyst-ratings";
 import { ZacksRatingDisplay } from "@/components/zacks-rating";
+import { StockNewsSection } from "@/components/stock-news";
 import { MetricCard } from "@/components/metric-card";
 import { WatchlistButton } from "@/components/watchlist-button";
 import type { StockDetail } from "@shared/schema";
@@ -215,6 +216,11 @@ export default function StockDetailPage() {
 
             <ZacksRatingDisplay
               rating={data?.zacksRating ?? null}
+              isLoading={isLoading}
+            />
+
+            <StockNewsSection
+              news={data?.news ?? null}
               isLoading={isLoading}
             />
 
