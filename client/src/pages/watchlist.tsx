@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useRef } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Star, ArrowLeft, LayoutGrid, Table as TableIcon } from "lucide-react";
+import { Star, ArrowLeft, LayoutGrid, Table as TableIcon, Download, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Header } from "@/components/header";
@@ -10,6 +10,8 @@ import { WatchlistTable } from "@/components/watchlist-table";
 import { StockSearch } from "@/components/stock-search";
 import { getUserId } from "@/lib/userId";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { WatchlistItem } from "@shared/schema";
 
 type ViewMode = "cards" | "table";
@@ -17,6 +19,8 @@ type ViewMode = "cards" | "table";
 export default function WatchlistPage() {
   const userId = getUserId();
   const [viewMode, setViewMode] = useState<ViewMode>("table");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   const { data: watchlist, isLoading } = useQuery<WatchlistItem[]>({
     queryKey: ['/api/watchlist', userId],
@@ -26,6 +30,84 @@ export default function WatchlistPage() {
       return res.json();
     },
   });
+
+  const importMutation = useMutation({
+    mutationFn: async (xml: string) => {
+      const res = await apiRequest("POST", `/api/watchlist/${userId}/import`, { xml });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/watchlist', userId] });
+      toast({
+        title: "Import Successful",
+        description: data.message,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Import Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleExport = async () => {
+    try {
+      const res = await fetch(`/api/watchlist/${userId}/export`);
+      if (!res.ok) throw new Error("Failed to export watchlist");
+      
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `watchlist-${new Date().toISOString().split('T')[0]}.xml`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast({
+        title: "Export Successful",
+        description: `Exported ${sortedWatchlist.length} stocks to XML file`,
+      });
+    } catch (error) {
+      toast({
+        title: "Export Failed",
+        description: "Failed to export watchlist",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (!file.name.endsWith('.xml')) {
+      toast({
+        title: "Invalid File",
+        description: "Please select an XML file",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const xml = event.target?.result as string;
+      importMutation.mutate(xml);
+    };
+    reader.readAsText(file);
+    
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   const sortedWatchlist = watchlist?.slice().sort((a, b) => b.addedAt - a.addedAt) ?? [];
 
@@ -43,6 +125,15 @@ export default function WatchlistPage() {
           </Link>
         </div>
 
+        <input
+          type="file"
+          ref={fileInputRef}
+          accept=".xml"
+          onChange={handleFileChange}
+          className="hidden"
+          data-testid="input-import-file"
+        />
+        
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-3">
@@ -59,30 +150,56 @@ export default function WatchlistPage() {
               )}
             </p>
           </div>
-          {sortedWatchlist.length > 0 && (
-            <div className="flex gap-1 bg-muted rounded-lg p-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex gap-1">
               <Button
-                variant={viewMode === "table" ? "default" : "ghost"}
+                variant="outline"
                 size="sm"
-                onClick={() => setViewMode("table")}
+                onClick={handleImportClick}
+                disabled={importMutation.isPending}
                 className="gap-2"
-                data-testid="button-view-table"
+                data-testid="button-import-watchlist"
               >
-                <TableIcon className="h-4 w-4" />
-                Table
+                <Upload className="h-4 w-4" />
+                Import
               </Button>
               <Button
-                variant={viewMode === "cards" ? "default" : "ghost"}
+                variant="outline"
                 size="sm"
-                onClick={() => setViewMode("cards")}
+                onClick={handleExport}
+                disabled={sortedWatchlist.length === 0}
                 className="gap-2"
-                data-testid="button-view-cards"
+                data-testid="button-export-watchlist"
               >
-                <LayoutGrid className="h-4 w-4" />
-                Cards
+                <Download className="h-4 w-4" />
+                Export
               </Button>
             </div>
-          )}
+            {sortedWatchlist.length > 0 && (
+              <div className="flex gap-1 bg-muted rounded-lg p-1">
+                <Button
+                  variant={viewMode === "table" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("table")}
+                  className="gap-2"
+                  data-testid="button-view-table"
+                >
+                  <TableIcon className="h-4 w-4" />
+                  Table
+                </Button>
+                <Button
+                  variant={viewMode === "cards" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setViewMode("cards")}
+                  className="gap-2"
+                  data-testid="button-view-cards"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                  Cards
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
 
         {isLoading ? (

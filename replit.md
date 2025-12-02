@@ -52,13 +52,15 @@ shared/
 2. **Stock Detail**: Price, P/E ratio, market cap, 52-week range, beta, EPS
 3. **Price Charts**: 30/90/180-day interactive price history charts (Yahoo Finance)
 4. **MACD Indicator**: Technical analysis with MACD, signal line, histogram
-5. **Technical Analysis**: RSI (14-period), Moving Averages (20/50/200), Bollinger Bands, ATR, Momentum
-6. **Analyst Ratings**: Aggregated Buy/Sell ratings from analysts
-7. **Zacks Rating**: 1-5 scale rating (Strong Buy to Strong Sell)
-8. **Latest News**: 3 most recent news articles filtered by relevance (mentions ticker/company name)
-9. **Watchlist Table**: Table view with sortable columns (price, change, P/E, Zacks)
-10. **Watchlist Cards**: Alternative card view for watchlist
-11. **Dark Mode**: System/light/dark theme support
+5. **Technical Analysis**: RSI (14-period) with Buy/Sell/Hold recommendations, Moving Averages (20/50/200), Bollinger Bands, ATR, Momentum
+6. **RSI Recommendations**: Buy Signal (RSI < 30), Sell Signal (RSI > 70), Hold (RSI 30-70)
+7. **Analyst Ratings**: Aggregated Buy/Sell ratings from analysts
+8. **Zacks Rating**: 1-5 scale rating (Strong Buy to Strong Sell)
+9. **Latest News**: 3 most recent news articles filtered by relevance (mentions ticker/company name)
+10. **Watchlist Table**: Table view with sortable columns (price, change, P/E, Zacks)
+11. **Watchlist Cards**: Alternative card view for watchlist
+12. **Watchlist Export/Import**: Export watchlist as XML file, import from XML file
+13. **Dark Mode**: System/light/dark theme support
 
 ## API Endpoints
 - `GET /api/stocks/search?query={ticker}` - Search stocks
@@ -67,6 +69,8 @@ shared/
 - `GET /api/watchlist/{userId}` - Get user's watchlist
 - `POST /api/watchlist/{userId}` - Add stock to watchlist
 - `DELETE /api/watchlist/{userId}/{symbol}` - Remove from watchlist
+- `GET /api/watchlist/{userId}/export` - Export watchlist as XML
+- `POST /api/watchlist/{userId}/import` - Import watchlist from XML
 
 ## Environment Variables
 - `FINNHUB_API_KEY` - Required for real-time quotes, metrics, analyst ratings, and news

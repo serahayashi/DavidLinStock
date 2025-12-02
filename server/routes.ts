@@ -4,6 +4,30 @@ import { storage } from "./storage";
 import { searchStocks, getStockDetail, getQuote } from "./finnhub";
 import { insertWatchlistItemSchema } from "@shared/schema";
 
+function escapeXml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+function parseXmlWatchlist(xml: string): string[] {
+  const symbols: string[] = [];
+  const seen = new Set<string>();
+  const symbolRegex = /<symbol>([^<]+)<\/symbol>/g;
+  let match;
+  while ((match = symbolRegex.exec(xml)) !== null) {
+    const symbol = match[1].trim().toUpperCase();
+    if (symbol && /^[A-Z0-9.-]{1,10}$/.test(symbol) && !seen.has(symbol)) {
+      seen.add(symbol);
+      symbols.push(symbol);
+    }
+  }
+  return symbols;
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -106,6 +130,81 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Watchlist remove error:", error);
       res.status(500).json({ error: "Failed to remove from watchlist" });
+    }
+  });
+
+  app.get("/api/watchlist/:userId/export", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const watchlist = await storage.getWatchlist(userId);
+      
+      const xmlParts = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<watchlist>',
+        `  <exportDate>${new Date().toISOString()}</exportDate>`,
+        '  <stocks>'
+      ];
+      
+      for (const item of watchlist) {
+        xmlParts.push(`    <stock>`);
+        xmlParts.push(`      <symbol>${escapeXml(item.symbol)}</symbol>`);
+        xmlParts.push(`      <addedAt>${new Date(item.addedAt).toISOString()}</addedAt>`);
+        xmlParts.push(`    </stock>`);
+      }
+      
+      xmlParts.push('  </stocks>');
+      xmlParts.push('</watchlist>');
+      
+      const xml = xmlParts.join('\n');
+      
+      res.setHeader('Content-Type', 'application/xml');
+      res.setHeader('Content-Disposition', `attachment; filename="watchlist-${new Date().toISOString().split('T')[0]}.xml"`);
+      res.send(xml);
+    } catch (error) {
+      console.error("Watchlist export error:", error);
+      res.status(500).json({ error: "Failed to export watchlist" });
+    }
+  });
+
+  app.post("/api/watchlist/:userId/import", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { xml } = req.body;
+      
+      if (!xml || typeof xml !== 'string') {
+        return res.status(400).json({ error: "XML content is required" });
+      }
+      
+      const symbols = parseXmlWatchlist(xml);
+      
+      if (symbols.length === 0) {
+        return res.status(400).json({ error: "No valid stock symbols found in XML" });
+      }
+      
+      const existingWatchlist = await storage.getWatchlist(userId);
+      const existingSymbols = new Set(existingWatchlist.map(item => item.symbol));
+      
+      const imported: string[] = [];
+      const skipped: string[] = [];
+      
+      for (const symbol of symbols) {
+        if (existingSymbols.has(symbol)) {
+          skipped.push(symbol);
+        } else {
+          await storage.addToWatchlist({ userId, symbol });
+          imported.push(symbol);
+        }
+      }
+      
+      res.json({ 
+        success: true, 
+        imported, 
+        skipped,
+        message: `Imported ${imported.length} stocks${skipped.length > 0 ? `, ${skipped.length} already in watchlist` : ''}`
+      });
+    } catch (error) {
+      console.error("Watchlist import error:", error);
+      res.status(500).json({ error: "Failed to import watchlist" });
     }
   });
 

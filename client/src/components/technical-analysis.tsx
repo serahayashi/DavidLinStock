@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, TrendingDown, Activity, BarChart3, Target } from "lucide-react";
+import { TrendingUp, TrendingDown, Activity, BarChart3, Target, ShoppingCart, Ban, Hand } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -18,6 +18,43 @@ interface TechnicalAnalysisProps {
 function formatNumber(value: number | null, decimals: number = 2): string {
   if (value === null) return "N/A";
   return value.toFixed(decimals);
+}
+
+function getRSIRecommendation(rsi: number | null): { 
+  action: string; 
+  icon: typeof ShoppingCart;
+  color: string; 
+  bgColor: string;
+  description: string;
+} {
+  if (rsi === null) return { 
+    action: "No Data", 
+    icon: Hand,
+    color: "text-muted-foreground", 
+    bgColor: "bg-muted",
+    description: "Insufficient data for recommendation" 
+  };
+  if (rsi <= 30) return { 
+    action: "Buy Signal", 
+    icon: ShoppingCart,
+    color: "text-green-600 dark:text-green-400", 
+    bgColor: "bg-green-500/20",
+    description: "RSI below 30 indicates oversold conditions - potential buying opportunity" 
+  };
+  if (rsi >= 70) return { 
+    action: "Sell Signal", 
+    icon: Ban,
+    color: "text-red-600 dark:text-red-400", 
+    bgColor: "bg-red-500/20",
+    description: "RSI above 70 indicates overbought conditions - consider selling" 
+  };
+  return { 
+    action: "Hold", 
+    icon: Hand,
+    color: "text-yellow-600 dark:text-yellow-400", 
+    bgColor: "bg-yellow-500/20",
+    description: "RSI between 30-70 is neutral - hold current position" 
+  };
 }
 
 function getRSISignal(rsi: number | null): { text: string; color: string; description: string } {
@@ -87,9 +124,11 @@ export function TechnicalAnalysis({ indicators, currentPrice, isLoading }: Techn
   }
 
   const rsiSignal = getRSISignal(indicators.rsi);
+  const rsiRecommendation = getRSIRecommendation(indicators.rsi);
   const bollingerSignal = getBollingerSignal(currentPrice, indicators.bollingerUpper, indicators.bollingerLower);
   const momentumSignal = getMomentumSignal(indicators.momentum);
   const MomentumIcon = momentumSignal.icon;
+  const RecommendationIcon = rsiRecommendation.icon;
 
   return (
     <Card>
@@ -100,6 +139,38 @@ export function TechnicalAnalysis({ indicators, currentPrice, isLoading }: Techn
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div 
+              className={`p-4 rounded-lg ${rsiRecommendation.bgColor} cursor-help`}
+              data-testid="rsi-recommendation-box"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-full ${rsiRecommendation.bgColor}`}>
+                    <RecommendationIcon className={`h-6 w-6 ${rsiRecommendation.color}`} />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">RSI Recommendation</p>
+                    <p className={`text-lg font-bold ${rsiRecommendation.color}`} data-testid="text-rsi-recommendation">
+                      {rsiRecommendation.action}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">RSI Value</p>
+                  <p className="text-2xl font-mono font-bold" data-testid="text-rsi-value-large">
+                    {formatNumber(indicators.rsi, 1)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="max-w-[300px]">
+            <p>{rsiRecommendation.description}</p>
+          </TooltipContent>
+        </Tooltip>
+
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <Tooltip>
