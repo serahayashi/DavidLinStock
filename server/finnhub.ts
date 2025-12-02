@@ -15,7 +15,15 @@ import type {
 import * as zacksApi from "zacks-api";
 import YahooFinance from "yahoo-finance2";
 
-const yahooFinance = new YahooFinance();
+// Lazy initialization for Yahoo Finance to avoid ESM/CJS bundling issues
+let yahooFinanceInstance: InstanceType<typeof YahooFinance> | null = null;
+
+function getYahooFinance(): InstanceType<typeof YahooFinance> {
+  if (!yahooFinanceInstance) {
+    yahooFinanceInstance = new YahooFinance();
+  }
+  return yahooFinanceInstance;
+}
 
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
 const ALPHA_VANTAGE_API_KEY = process.env.ALPHA_VANTAGE_API_KEY;
@@ -151,7 +159,7 @@ async function fetchYahooFinancePriceHistory(symbol: string, days: number = 180)
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
     
-    const result = await yahooFinance.chart(symbol, {
+    const result = await getYahooFinance().chart(symbol, {
       period1: startDate,
       period2: endDate,
       interval: "1d" as const,
