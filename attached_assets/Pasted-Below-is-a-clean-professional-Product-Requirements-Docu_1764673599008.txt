@@ -1,0 +1,267 @@
+Below is a clean, professional **Product Requirements Document (PRD)** for the stock-rating aggregation and search app you described. It focuses on product behavior and features and avoids giving any investment advice.
+(Everything is safe for teens—no instructions for trading, just product design.)
+
+---
+
+# **Product Requirements Document (PRD)**
+
+## **Product Name:** StockLens
+
+## **Version:** 1.0
+
+## **Owner:** Product Team
+
+## **Last Updated:** 02 Dec 2025
+
+---
+
+# **1. Overview**
+
+**StockLens** is a cross-platform stock information app that aggregates analyst ratings from hundreds of brokerage firms and presents them in a simple, searchable interface. Users can look up any supported stock by ticker, view key metrics (latest price, P/E ratio, recent price history, MACD), and save stocks to their personal watchlist.
+
+The app does **not** require login; users are identified using a **unique user ID token** (auto-generated on first app open), allowing lightweight storage of favorites in the database.
+
+---
+
+# **2. Goals & Objectives**
+
+### **Primary Goals**
+
+* Provide users with a **centralized view of brokerage stock ratings**.
+* Allow fast **search by stock ticker**.
+* Offer clear, high-level stock data:
+
+  * Latest price
+  * P/E ratio
+  * Price history (30, 90, 180 days)
+  * MACD (Moving Average Convergence Divergence) indicator data
+* Help users track stocks through a **watchlist**—without requiring login.
+
+### **Non-Goals**
+
+* The app does **not** offer trading functions.
+* The app does **not** give financial advice, predictions, or recommendations.
+* The app does **not** include social features or portfolios.
+
+---
+
+# **3. User Personas**
+
+### **1. Curious Learner (Teen-Friendly Persona)**
+
+Wants a simple way to explore stock information without personal accounts or sensitive data.
+
+### **2. Market Observer**
+
+Wants quick signals and analyst consensus at a glance.
+
+### **3. Watchlist Keeper**
+
+Prefers bookmarking stocks and returning to them over time.
+
+---
+
+# **4. Key Features**
+
+## **4.1 Stock Search**
+
+* **Input:** Stock ticker (e.g., AAPL, TSLA).
+
+* **Behavior:**
+
+  * Autocomplete suggestions for supported tickers.
+  * Fetches aggregated data from StockLens API:
+
+    * Basic stock info
+    * Analyst ratings
+    * Price history
+    * MACD
+
+* **Error Handling:**
+
+  * “Ticker not found” messaging.
+  * Soft fallback suggestions (“Did you mean…”).
+
+---
+
+## **4.2 Aggregated Analyst Ratings**
+
+* Pull ratings from hundreds of brokerage firms (Strong Buy / Buy / Hold / Sell categories).
+* Weighted aggregation method is handled by backend.
+* Display includes:
+
+  * Overall rating score
+  * Breakdown (e.g., 45% Buy, 30% Hold, etc.)
+  * Number of analysts contributing
+
+---
+
+## **4.3 Stock Data Display**
+
+Each stock page shows:
+
+### **1. Latest Stock Price**
+
+* Real-time or near real-time feed
+* Display:
+
+  * Current price
+  * Price change (absolute & %)
+  * Timestamp of update
+
+### **2. P/E Ratio**
+
+* Latest trailing or forward P/E depending on data availability
+* Tooltip with explanation (non-advisory, educational)
+
+### **3. Historical Price Data**
+
+Displayed in chart form with selectable ranges:
+
+* **30 days**
+* **90 days**
+* **180 days**
+
+Data points include:
+
+* Daily close price
+* Volume (optional, depending on API availability)
+
+### **4. MACD Indicator**
+
+* MACD line
+* Signal line
+* Histogram values
+* Explanation tooltip: what MACD represents in general (no advice)
+
+---
+
+## **4.4 Watchlist (User Data Storage Without Login)**
+
+### **User Identification**
+
+* On first app launch:
+
+  * System generates a **unique user ID** (UUID).
+  * Stored locally in device storage.
+* This ID is used for storing user preferences in backend DB.
+
+### **Capabilities**
+
+* Save any stock to watchlist
+* Remove stocks anytime
+* Database rows linked to userID
+* No personal information stored
+* No authentication required
+
+### **Technical Requirements**
+
+* CRUD endpoints:
+
+  * `POST /watchlist/{userID}`
+  * `GET /watchlist/{userID}`
+  * `DELETE /watchlist/{userID}/{ticker}`
+
+---
+
+# **5. Functional Requirements**
+
+## **5.1 Search**
+
+* **FR1:** System must return stock details within < 1 second (for cached data).
+* **FR2:** Search must support partial ticker matching.
+* **FR3:** If data cannot load, display fallback messaging.
+
+## **5.2 Stock Data Fetch**
+
+* **FR4:** Backend fetches latest stock price at least every X minutes (configurable).
+* **FR5:** Backend stores 30/90/180-day historical series.
+* **FR6:** MACD is computed from historical price data at backend.
+
+## **5.3 Watchlist**
+
+* **FR7:** Users must be able to add a stock to watchlist with one tap.
+* **FR8:** Users must be able to remove a stock with one tap.
+* **FR9:** Watchlist persists across sessions via userID.
+
+---
+
+# **6. Non-Functional Requirements**
+
+### **Performance**
+
+* API response time < 800ms for cached endpoints.
+* App search box must not block UI thread.
+
+### **Scalability**
+
+* Infrastructure must support growth to millions of anonymous user IDs.
+
+### **Security**
+
+* No personal info is stored.
+* UserIDs must be non-guessable.
+* All API traffic encrypted via HTTPS.
+
+### **Compliance**
+
+* App does **not** conduct financial advising or trading.
+* Content is strictly informational.
+
+---
+
+# **7. Data Sources & Architecture (High-Level)**
+
+### **Backend Data Flow**
+
+1. Aggregation engine ingests brokerage ratings via licensed sources.
+2. Market data provider supplies raw price, P/E, and historical data.
+3. MACD computation handled via backend analytics module.
+4. REST API provides structured responses to mobile/web clients.
+
+### **Client-Side**
+
+* React / Swift / Kotlin (platform dependent).
+* Local storage for userID.
+* Chart rendering using a lightweight library.
+
+---
+
+# **8. User Flows**
+
+## **Flow: First-Time User**
+
+1. Install → Open app
+2. App generates `userID`
+3. User searches a ticker
+4. User taps “☆ Save to Watchlist”
+5. System stores record under userID in backend DB
+6. User returns and sees stored watchlist
+
+---
+
+# **9. Success Metrics**
+
+* **Search Response Time** < 1s
+* **Watchlist Save Success Rate** > 99%
+* **API Uptime** 99.9%
+* **User Returning Rate (7-day)** increases >= 20% after watchlist launch
+
+---
+
+# **10. Future Enhancements (Not in Scope for v1)**
+
+* Push notifications for price movements
+* Social sentiment data
+* Multi-device sync
+* Full authentication system
+* Portfolio tracking
+
+---
+
+If you'd like, I can also generate:
+✅ wireframes
+✅ API specification document
+✅ database schema
+✅ stakeholder slide deck (pitch deck)
+Just tell me what you want next!
