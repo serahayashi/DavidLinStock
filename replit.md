@@ -8,7 +8,7 @@ StockLens is a cross-platform stock information app that aggregates analyst rati
 - **Backend**: Express.js, Node.js
 - **Data Sources**: 
   - Finnhub API - Real-time quotes, metrics, analyst ratings, news
-  - Yahoo Finance (yahoo-finance2 v3) - Historical price data (primary)
+  - Yahoo Finance REST API - Historical price data (primary, direct fetch)
   - Alpha Vantage - Historical price fallback
   - Zacks API - Stock rankings
 - **Storage**: In-memory (MemStorage)

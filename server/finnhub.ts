@@ -13,17 +13,6 @@ import type {
 
 // @ts-ignore - zacks-api doesn't have type definitions
 import * as zacksApi from "zacks-api";
-import YahooFinance from "yahoo-finance2";
-
-// Lazy initialization for Yahoo Finance to avoid ESM/CJS bundling issues
-let yahooFinanceInstance: InstanceType<typeof YahooFinance> | null = null;
-
-function getYahooFinance(): InstanceType<typeof YahooFinance> {
-  if (!yahooFinanceInstance) {
-    yahooFinanceInstance = new YahooFinance();
-  }
-  return yahooFinanceInstance;
-}
 
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
 const ALPHA_VANTAGE_API_KEY = process.env.ALPHA_VANTAGE_API_KEY;
@@ -155,34 +144,51 @@ async function fetchYahooFinancePriceHistory(symbol: string, days: number = 180)
   console.log(`Fetching Yahoo Finance data for ${symbol}...`);
   
   try {
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
+    // Use Yahoo Finance REST API directly (no ESM package issues)
+    const range = days <= 30 ? "1mo" : days <= 90 ? "3mo" : "6mo";
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${range}&interval=1d`;
     
-    const result = await getYahooFinance().chart(symbol, {
-      period1: startDate,
-      period2: endDate,
-      interval: "1d" as const,
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+      }
     });
     
-    const quotes = (result as any)?.quotes;
-    if (!quotes || !Array.isArray(quotes) || quotes.length === 0) {
+    if (!response.ok) {
+      console.error("Yahoo Finance API error:", response.status);
+      return [];
+    }
+    
+    const data = await response.json();
+    const result = data?.chart?.result?.[0];
+    
+    if (!result) {
       console.log("No data from Yahoo Finance");
       return [];
     }
     
-    console.log(`Yahoo Finance returned ${quotes.length} days of data`);
+    const timestamps = result.timestamp || [];
+    const quotes = result.indicators?.quote?.[0] || {};
+    
+    if (timestamps.length === 0) {
+      console.log("No timestamps in Yahoo Finance response");
+      return [];
+    }
+    
+    console.log(`Yahoo Finance returned ${timestamps.length} days of data`);
     
     const points: PriceHistoryPoint[] = [];
-    for (const quote of quotes) {
-      if (quote.date && quote.close !== null && quote.close !== undefined) {
+    for (let i = 0; i < timestamps.length; i++) {
+      const close = quotes.close?.[i];
+      if (close !== null && close !== undefined) {
+        const date = new Date(timestamps[i] * 1000);
         points.push({
-          date: new Date(quote.date).toISOString().split("T")[0],
-          open: quote.open || quote.close,
-          high: quote.high || quote.close,
-          low: quote.low || quote.close,
-          close: quote.close,
-          volume: quote.volume || 0,
+          date: date.toISOString().split("T")[0],
+          open: quotes.open?.[i] || close,
+          high: quotes.high?.[i] || close,
+          low: quotes.low?.[i] || close,
+          close: close,
+          volume: quotes.volume?.[i] || 0,
         });
       }
     }
