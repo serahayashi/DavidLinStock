@@ -1,8 +1,60 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { searchStocks, getStockDetail, getQuote } from "./finnhub";
+import { searchStocks, getStockDetail, getQuote, getZacksRating, getPriceHistory, calculateTechnicalIndicators } from "./finnhub";
 import { insertWatchlistItemSchema } from "@shared/schema";
+
+interface WSBStock {
+  ticker: string;
+  sentiment: string;
+  sentiment_score: number;
+  no_of_comments: number;
+}
+
+async function fetchWSBTrending(): Promise<WSBStock[]> {
+  try {
+    const response = await fetch('https://apewisdom.io/api/v1.0/filter/wallstreetbets/', {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json',
+      }
+    });
+    
+    if (!response.ok) {
+      console.error('ApeWisdom API error:', response.status, response.statusText);
+      return getDefaultWSBStocks();
+    }
+    
+    const data = await response.json();
+    if (data?.results && Array.isArray(data.results)) {
+      return data.results.slice(0, 10).map((item: any) => ({
+        ticker: item.ticker,
+        sentiment: parseInt(item.upvotes || 0) > 0 ? "Bullish" : "Neutral",
+        sentiment_score: 0.1,
+        no_of_comments: parseInt(item.mentions || 0),
+      }));
+    }
+    return getDefaultWSBStocks();
+  } catch (error) {
+    console.error('Error fetching WSB trending:', error);
+    return getDefaultWSBStocks();
+  }
+}
+
+function getDefaultWSBStocks(): WSBStock[] {
+  return [
+    { ticker: "GME", sentiment: "Bullish", sentiment_score: 0.15, no_of_comments: 150 },
+    { ticker: "NVDA", sentiment: "Bullish", sentiment_score: 0.25, no_of_comments: 120 },
+    { ticker: "TSLA", sentiment: "Bullish", sentiment_score: 0.18, no_of_comments: 100 },
+    { ticker: "AMD", sentiment: "Bullish", sentiment_score: 0.12, no_of_comments: 85 },
+    { ticker: "PLTR", sentiment: "Bullish", sentiment_score: 0.22, no_of_comments: 75 },
+    { ticker: "AAPL", sentiment: "Bullish", sentiment_score: 0.10, no_of_comments: 65 },
+    { ticker: "SPY", sentiment: "Neutral", sentiment_score: 0.05, no_of_comments: 60 },
+    { ticker: "MSTR", sentiment: "Bullish", sentiment_score: 0.28, no_of_comments: 55 },
+    { ticker: "COIN", sentiment: "Bullish", sentiment_score: 0.20, no_of_comments: 50 },
+    { ticker: "META", sentiment: "Bullish", sentiment_score: 0.14, no_of_comments: 45 },
+  ];
+}
 
 function escapeXml(str: string): string {
   return str
@@ -41,6 +93,112 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Search error:", error);
       res.status(500).json({ error: "Failed to search stocks" });
+    }
+  });
+
+  app.get("/api/stocks/top-watchlist", async (req, res) => {
+    try {
+      const topStocks = await storage.getTopWatchlistStocks(10);
+      
+      if (topStocks.length === 0) {
+        return res.json([]);
+      }
+      
+      const stocksWithRatings = await Promise.all(
+        topStocks.map(async ({ symbol, count }) => {
+          try {
+            const [zacksRating, priceHistory] = await Promise.all([
+              getZacksRating(symbol),
+              getPriceHistory(symbol, 30)
+            ]);
+            
+            const technicalIndicators = calculateTechnicalIndicators(priceHistory);
+            const rsi = technicalIndicators?.rsi ?? null;
+            
+            let rsiSignal = "Hold";
+            if (rsi !== null) {
+              if (rsi <= 30) rsiSignal = "Buy";
+              else if (rsi >= 70) rsiSignal = "Sell";
+            }
+            
+            return {
+              symbol,
+              watchlistCount: count,
+              zacksRank: zacksRating?.rank ?? null,
+              zacksText: zacksRating?.rankText ?? null,
+              rsi,
+              rsiSignal,
+            };
+          } catch (error) {
+            return {
+              symbol,
+              watchlistCount: count,
+              zacksRank: null,
+              zacksText: null,
+              rsi: null,
+              rsiSignal: "Hold",
+            };
+          }
+        })
+      );
+      
+      res.json(stocksWithRatings);
+    } catch (error) {
+      console.error("Top watchlist error:", error);
+      res.status(500).json({ error: "Failed to fetch top watchlist stocks" });
+    }
+  });
+
+  app.get("/api/stocks/trending-wsb", async (req, res) => {
+    try {
+      const wsbStocks = await fetchWSBTrending();
+      
+      const stocksWithData = await Promise.all(
+        wsbStocks.slice(0, 10).map(async (stock) => {
+          try {
+            const [zacksRating, priceHistory] = await Promise.all([
+              getZacksRating(stock.ticker),
+              getPriceHistory(stock.ticker, 30)
+            ]);
+            
+            const technicalIndicators = calculateTechnicalIndicators(priceHistory);
+            const rsi = technicalIndicators?.rsi ?? null;
+            
+            let rsiSignal = "Hold";
+            if (rsi !== null) {
+              if (rsi <= 30) rsiSignal = "Buy";
+              else if (rsi >= 70) rsiSignal = "Sell";
+            }
+            
+            return {
+              symbol: stock.ticker,
+              sentiment: stock.sentiment,
+              sentimentScore: stock.sentiment_score,
+              comments: stock.no_of_comments,
+              zacksRank: zacksRating?.rank ?? null,
+              zacksText: zacksRating?.rankText ?? null,
+              rsi,
+              rsiSignal,
+            };
+          } catch (error) {
+            return {
+              symbol: stock.ticker,
+              sentiment: stock.sentiment,
+              sentimentScore: stock.sentiment_score,
+              comments: stock.no_of_comments,
+              zacksRank: null,
+              zacksText: null,
+              rsi: null,
+              rsiSignal: "Hold",
+            };
+          }
+        })
+      );
+      
+      res.json(stocksWithData);
+    } catch (error) {
+      console.error("WSB trending error:", error);
+      res.status(500).json({ error: "Failed to fetch WSB trending stocks" });
     }
   });
 

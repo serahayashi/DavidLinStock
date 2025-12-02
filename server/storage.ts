@@ -6,6 +6,7 @@ export interface IStorage {
   addToWatchlist(item: InsertWatchlistItem): Promise<WatchlistItem>;
   removeFromWatchlist(userId: string, symbol: string): Promise<boolean>;
   isInWatchlist(userId: string, symbol: string): Promise<boolean>;
+  getTopWatchlistStocks(limit: number): Promise<{ symbol: string; count: number }[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -59,6 +60,23 @@ export class MemStorage implements IStorage {
     return Array.from(this.watchlist.values()).some(
       (item) => item.userId === userId && item.symbol === symbol.toUpperCase()
     );
+  }
+
+  async getTopWatchlistStocks(limit: number): Promise<{ symbol: string; count: number }[]> {
+    const symbolCounts = new Map<string, number>();
+    
+    for (const item of this.watchlist.values()) {
+      const normalizedSymbol = item.symbol.toUpperCase().trim();
+      const current = symbolCounts.get(normalizedSymbol) || 0;
+      symbolCounts.set(normalizedSymbol, current + 1);
+    }
+    
+    const sorted = Array.from(symbolCounts.entries())
+      .map(([symbol, count]) => ({ symbol, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, limit);
+    
+    return sorted;
   }
 }
 

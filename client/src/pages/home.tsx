@@ -1,9 +1,12 @@
 import { Link } from "wouter";
-import { TrendingUp, Search, Star, BarChart3, LineChart, Activity } from "lucide-react";
+import { TrendingUp, Search, Star, BarChart3, LineChart, Activity, Users, MessageCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { StockSearch } from "@/components/stock-search";
 import { Header } from "@/components/header";
+import { useQuery } from "@tanstack/react-query";
+import { SiReddit } from "react-icons/si";
 
 const popularStocks = [
   { symbol: "AAPL", name: "Apple Inc." },
@@ -13,6 +16,47 @@ const popularStocks = [
   { symbol: "NVDA", name: "NVIDIA Corporation" },
   { symbol: "TSLA", name: "Tesla, Inc." },
 ];
+
+interface TopWatchlistStock {
+  symbol: string;
+  watchlistCount: number;
+  zacksRank: number | null;
+  zacksText: string | null;
+  rsi: number | null;
+  rsiSignal: string;
+}
+
+interface WSBStock {
+  symbol: string;
+  sentiment: string;
+  sentimentScore: number;
+  comments: number;
+  zacksRank: number | null;
+  zacksText: string | null;
+  rsi: number | null;
+  rsiSignal: string;
+}
+
+function getRsiColor(signal: string): string {
+  switch (signal) {
+    case "Buy": return "text-green-600 dark:text-green-400";
+    case "Sell": return "text-red-600 dark:text-red-400";
+    default: return "text-muted-foreground";
+  }
+}
+
+function getZacksColor(rank: number | null): string {
+  if (rank === null) return "text-muted-foreground";
+  if (rank <= 2) return "text-green-600 dark:text-green-400";
+  if (rank === 3) return "text-yellow-600 dark:text-yellow-400";
+  return "text-red-600 dark:text-red-400";
+}
+
+function getSentimentColor(sentiment: string): string {
+  if (sentiment === "Bullish") return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
+  if (sentiment === "Bearish") return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400";
+  return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400";
+}
 
 const features = [
   {
@@ -48,6 +92,18 @@ const features = [
 ];
 
 export default function Home() {
+  const { data: topWatchlist, isLoading: isLoadingWatchlist, isError: isErrorWatchlist, refetch: refetchWatchlist } = useQuery<TopWatchlistStock[]>({
+    queryKey: ['/api/stocks/top-watchlist'],
+    staleTime: 1000 * 60 * 5,
+    retry: 2,
+  });
+
+  const { data: wsbTrending, isLoading: isLoadingWSB, isError: isErrorWSB, refetch: refetchWSB } = useQuery<WSBStock[]>({
+    queryKey: ['/api/stocks/trending-wsb'],
+    staleTime: 1000 * 60 * 5,
+    retry: 2,
+  });
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -94,6 +150,137 @@ export default function Home() {
               </Link>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section className="py-16">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <Users className="h-6 w-6 text-primary" />
+            <h2 className="text-2xl font-bold text-center">Top Watchlist Stocks</h2>
+          </div>
+          <p className="text-center text-muted-foreground mb-8">
+            Most popular stocks among our users with Zacks ratings and RSI signals
+          </p>
+          
+          {isLoadingWatchlist ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : isErrorWatchlist ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground mb-4">Unable to fetch watchlist data.</p>
+              <Button variant="outline" onClick={() => refetchWatchlist()} data-testid="button-retry-watchlist">
+                Try Again
+              </Button>
+            </div>
+          ) : topWatchlist && topWatchlist.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 max-w-6xl mx-auto">
+              {topWatchlist.map((stock) => (
+                <Link key={stock.symbol} href={`/stock/${stock.symbol}`}>
+                  <Card className="overflow-visible hover-elevate active-elevate-2 h-full" data-testid={`card-top-watchlist-${stock.symbol}`}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <div className="font-mono font-bold text-lg">{stock.symbol}</div>
+                        <Badge variant="secondary" className="text-xs">
+                          <Star className="h-3 w-3 mr-1" />
+                          {stock.watchlistCount}
+                        </Badge>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">Zacks:</span>
+                          <span className={`font-medium ${getZacksColor(stock.zacksRank)}`}>
+                            {stock.zacksText || "N/A"}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">RSI Signal:</span>
+                          <span className={`font-medium ${getRsiColor(stock.rsiSignal)}`}>
+                            {stock.rsiSignal}
+                            {stock.rsi !== null && ` (${stock.rsi.toFixed(1)})`}
+                          </span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>No watchlist data available yet. Add stocks to your watchlist to see trending stocks.</p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="py-16 bg-muted/30">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <SiReddit className="h-6 w-6 text-orange-500" />
+            <h2 className="text-2xl font-bold text-center">Trending on r/wallstreetbets</h2>
+          </div>
+          <p className="text-center text-muted-foreground mb-8">
+            Top 10 stocks being discussed with community sentiment and technical ratings
+          </p>
+          
+          {isLoadingWSB ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : isErrorWSB ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground mb-4">Unable to fetch trending stocks from r/wallstreetbets.</p>
+              <Button variant="outline" onClick={() => refetchWSB()} data-testid="button-retry-wsb">
+                Try Again
+              </Button>
+            </div>
+          ) : wsbTrending && wsbTrending.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 max-w-6xl mx-auto">
+              {wsbTrending.map((stock, index) => (
+                <Link key={stock.symbol} href={`/stock/${stock.symbol}`}>
+                  <Card className="overflow-visible hover-elevate active-elevate-2 h-full" data-testid={`card-wsb-${stock.symbol}`}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground font-medium">#{index + 1}</span>
+                          <span className="font-mono font-bold text-lg">{stock.symbol}</span>
+                        </div>
+                        <Badge className={getSentimentColor(stock.sentiment)}>
+                          {stock.sentiment}
+                        </Badge>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground flex items-center gap-1">
+                            <MessageCircle className="h-3 w-3" /> Mentions:
+                          </span>
+                          <span className="font-medium">{stock.comments}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">Zacks:</span>
+                          <span className={`font-medium ${getZacksColor(stock.zacksRank)}`}>
+                            {stock.zacksText || "N/A"}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">RSI Signal:</span>
+                          <span className={`font-medium ${getRsiColor(stock.rsiSignal)}`}>
+                            {stock.rsiSignal}
+                          </span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>Unable to fetch trending stocks. Please try again later.</p>
+            </div>
+          )}
         </div>
       </section>
 

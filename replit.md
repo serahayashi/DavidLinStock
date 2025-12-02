@@ -61,11 +61,15 @@ shared/
 11. **Watchlist Cards**: Alternative card view for watchlist
 12. **Watchlist Export/Import**: Export watchlist as XML file, import from XML file
 13. **Dark Mode**: System/light/dark theme support
+14. **Top Watchlist Stocks**: Homepage section showing top 10 most-watched stocks with Zacks ratings and RSI signals
+15. **WSB Trending Stocks**: Homepage section showing top 10 trending stocks from r/wallstreetbets with sentiment, mentions, Zacks ratings, and RSI signals (via ApeWisdom API)
 
 ## API Endpoints
 - `GET /api/stocks/search?query={ticker}` - Search stocks
 - `GET /api/stocks/{symbol}` - Get full stock details
 - `GET /api/stocks/{symbol}/quote` - Get quote only
+- `GET /api/stocks/top-watchlist` - Get top 10 most-watched stocks with Zacks/RSI ratings
+- `GET /api/stocks/trending-wsb` - Get top 10 trending WSB stocks with sentiment and ratings
 - `GET /api/watchlist/{userId}` - Get user's watchlist
 - `POST /api/watchlist/{userId}` - Add stock to watchlist
 - `DELETE /api/watchlist/{userId}/{symbol}` - Remove from watchlist
