@@ -140,8 +140,10 @@ async function fetchAlphaVantagePriceHistory(symbol: string): Promise<PriceHisto
     return [];
   }
 
+  console.log(`Fetching Alpha Vantage data for ${symbol}...`);
+  
   try {
-    const url = `${ALPHA_VANTAGE_URL}?function=TIME_SERIES_DAILY&symbol=${symbol}&outputsize=full&apikey=${ALPHA_VANTAGE_API_KEY}`;
+    const url = `${ALPHA_VANTAGE_URL}?function=TIME_SERIES_DAILY&symbol=${symbol}&outputsize=compact&apikey=${ALPHA_VANTAGE_API_KEY}`;
     const response = await fetch(url);
     
     if (!response.ok) {
@@ -150,16 +152,30 @@ async function fetchAlphaVantagePriceHistory(symbol: string): Promise<PriceHisto
     }
 
     const data = await response.json();
+    console.log("Alpha Vantage response keys:", Object.keys(data));
     
-    if (data["Error Message"] || data["Note"]) {
-      console.error("Alpha Vantage error:", data["Error Message"] || data["Note"]);
+    if (data["Error Message"]) {
+      console.error("Alpha Vantage error:", data["Error Message"]);
+      return [];
+    }
+    
+    if (data["Note"]) {
+      console.log("Alpha Vantage rate limit note:", data["Note"]);
+      return [];
+    }
+    
+    if (data["Information"]) {
+      console.log("Alpha Vantage info:", data["Information"]);
       return [];
     }
 
     const timeSeries = data["Time Series (Daily)"];
     if (!timeSeries) {
+      console.log("No time series data in Alpha Vantage response");
       return [];
     }
+    
+    console.log(`Alpha Vantage returned ${Object.keys(timeSeries).length} days of data`);
 
     const points: PriceHistoryPoint[] = [];
     const dates = Object.keys(timeSeries).sort();

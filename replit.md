@@ -59,7 +59,8 @@ shared/
 - `DELETE /api/watchlist/{userId}/{symbol}` - Remove from watchlist
 
 ## Environment Variables
-- `FINNHUB_API_KEY` - Required for stock data
+- `FINNHUB_API_KEY` - Required for real-time quotes, metrics, and analyst ratings
+- `ALPHA_VANTAGE_API_KEY` - Required for price history charts and MACD indicator
 
 ## Running the Project
 The application runs on port 5000 with `npm run dev`. This starts both the Express backend and Vite frontend.
