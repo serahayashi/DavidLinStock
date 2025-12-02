@@ -354,6 +354,15 @@ export async function getCompanyNews(symbol: string, limit: number = 3): Promise
     const fromStr = from.toISOString().split("T")[0];
     const toStr = to.toISOString().split("T")[0];
     
+    // Also fetch company profile to get the company name for filtering
+    let companyName = "";
+    try {
+      const profile = await fetchFinnhub("/stock/profile2", { symbol });
+      companyName = profile?.name?.toLowerCase() || "";
+    } catch {
+      // Continue without company name filtering
+    }
+    
     const data = await fetchFinnhub("/company-news", { 
       symbol, 
       from: fromStr, 
@@ -364,7 +373,26 @@ export async function getCompanyNews(symbol: string, limit: number = 3): Promise
       return [];
     }
 
-    return data.slice(0, limit).map((item: any) => ({
+    // Filter news to only include articles that mention the ticker or company name
+    const symbolLower = symbol.toLowerCase();
+    const relevantNews = data.filter((item: any) => {
+      const headline = (item.headline || "").toLowerCase();
+      const summary = (item.summary || "").toLowerCase();
+      const text = headline + " " + summary;
+      
+      // Check if the article mentions the ticker symbol or company name
+      const mentionsTicker = text.includes(symbolLower) || 
+        headline.includes(symbol) || 
+        summary.includes(symbol);
+      const mentionsCompany = companyName && (
+        text.includes(companyName) ||
+        text.includes(companyName.split(" ")[0]) // First word of company name (e.g., "Apple" from "Apple Inc")
+      );
+      
+      return mentionsTicker || mentionsCompany;
+    });
+
+    return relevantNews.slice(0, limit).map((item: any) => ({
       id: item.id,
       headline: item.headline || "",
       summary: item.summary || "",
