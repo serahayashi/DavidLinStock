@@ -1,37 +1,64 @@
-import { type User, type InsertUser } from "@shared/schema";
 import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import type { WatchlistItem, InsertWatchlistItem } from "@shared/schema";
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  getWatchlist(userId: string): Promise<WatchlistItem[]>;
+  addToWatchlist(item: InsertWatchlistItem): Promise<WatchlistItem>;
+  removeFromWatchlist(userId: string, symbol: string): Promise<boolean>;
+  isInWatchlist(userId: string, symbol: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
-  private users: Map<string, User>;
+  private watchlist: Map<string, WatchlistItem>;
 
   constructor() {
-    this.users = new Map();
+    this.watchlist = new Map();
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
+  async getWatchlist(userId: string): Promise<WatchlistItem[]> {
+    return Array.from(this.watchlist.values()).filter(
+      (item) => item.userId === userId
     );
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
+  async addToWatchlist(item: InsertWatchlistItem): Promise<WatchlistItem> {
+    const normalizedSymbol = item.symbol.toUpperCase().trim();
+    
+    const existing = Array.from(this.watchlist.values()).find(
+      (w) => w.userId === item.userId && w.symbol === normalizedSymbol
+    );
+    
+    if (existing) {
+      return existing;
+    }
+
     const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+    const watchlistItem: WatchlistItem = {
+      id,
+      userId: item.userId,
+      symbol: normalizedSymbol,
+      addedAt: Date.now(),
+    };
+    this.watchlist.set(id, watchlistItem);
+    return watchlistItem;
+  }
+
+  async removeFromWatchlist(userId: string, symbol: string): Promise<boolean> {
+    const item = Array.from(this.watchlist.values()).find(
+      (w) => w.userId === userId && w.symbol === symbol.toUpperCase()
+    );
+    
+    if (item) {
+      this.watchlist.delete(item.id);
+      return true;
+    }
+    return false;
+  }
+
+  async isInWatchlist(userId: string, symbol: string): Promise<boolean> {
+    return Array.from(this.watchlist.values()).some(
+      (item) => item.userId === userId && item.symbol === symbol.toUpperCase()
+    );
   }
 }
 

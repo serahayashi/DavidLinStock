@@ -43,6 +43,10 @@
   --chart-3: 280 65% 50%;
   --chart-4: 43 96% 56%;
   --chart-5: 12 76% 61%;
+  --stock-positive: 142 76% 36%;
+  --stock-negative: 0 84% 60%;
+  --stock-positive-bg: 142 76% 95%;
+  --stock-negative-bg: 0 84% 95%;
   --font-sans: Open Sans, sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: Menlo, monospace;
@@ -127,6 +131,10 @@
   --chart-3: 280 65% 65%;
   --chart-4: 43 96% 70%;
   --chart-5: 12 76% 70%;
+  --stock-positive: 142 76% 46%;
+  --stock-negative: 0 84% 60%;
+  --stock-positive-bg: 142 76% 15%;
+  --stock-negative-bg: 0 84% 15%;
   --shadow-2xs: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
   --shadow-xs: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
   --shadow-sm: 0px 2px 0px 0px hsl(0 0% 0% / 0.00), 0px 1px 2px -1px hsl(0 0% 0% / 0.00);

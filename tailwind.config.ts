@@ -81,11 +81,17 @@ export default {
           busy: "rgb(239 68 68)",
           offline: "rgb(156 163 175)",
         },
+        stock: {
+          positive: "hsl(var(--stock-positive) / <alpha-value>)",
+          negative: "hsl(var(--stock-negative) / <alpha-value>)",
+          "positive-bg": "hsl(var(--stock-positive-bg) / <alpha-value>)",
+          "negative-bg": "hsl(var(--stock-negative-bg) / <alpha-value>)",
+        },
       },
       fontFamily: {
-        sans: ["var(--font-sans)"],
+        sans: ["Inter", "var(--font-sans)", "sans-serif"],
         serif: ["var(--font-serif)"],
-        mono: ["var(--font-mono)"],
+        mono: ["JetBrains Mono", "var(--font-mono)", "monospace"],
       },
       keyframes: {
         "accordion-down": {
