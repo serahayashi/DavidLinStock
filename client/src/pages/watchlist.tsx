@@ -1,16 +1,22 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Star, Plus, ArrowLeft } from "lucide-react";
+import { Star, ArrowLeft, LayoutGrid, Table as TableIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Header } from "@/components/header";
 import { WatchlistCard, WatchlistCardSkeleton } from "@/components/watchlist-card";
+import { WatchlistTable } from "@/components/watchlist-table";
 import { StockSearch } from "@/components/stock-search";
 import { getUserId } from "@/lib/userId";
+import { cn } from "@/lib/utils";
 import type { WatchlistItem } from "@shared/schema";
+
+type ViewMode = "cards" | "table";
 
 export default function WatchlistPage() {
   const userId = getUserId();
+  const [viewMode, setViewMode] = useState<ViewMode>("table");
 
   const { data: watchlist, isLoading } = useQuery<WatchlistItem[]>({
     queryKey: ['/api/watchlist', userId],
@@ -53,6 +59,30 @@ export default function WatchlistPage() {
               )}
             </p>
           </div>
+          {sortedWatchlist.length > 0 && (
+            <div className="flex gap-1 bg-muted rounded-lg p-1">
+              <Button
+                variant={viewMode === "table" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("table")}
+                className="gap-2"
+                data-testid="button-view-table"
+              >
+                <TableIcon className="h-4 w-4" />
+                Table
+              </Button>
+              <Button
+                variant={viewMode === "cards" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("cards")}
+                className="gap-2"
+                data-testid="button-view-cards"
+              >
+                <LayoutGrid className="h-4 w-4" />
+                Cards
+              </Button>
+            </div>
+          )}
         </div>
 
         {isLoading ? (
@@ -84,6 +114,8 @@ export default function WatchlistPage() {
               </p>
             </CardContent>
           </Card>
+        ) : viewMode === "table" ? (
+          <WatchlistTable watchlist={sortedWatchlist} />
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {sortedWatchlist.map((item) => (

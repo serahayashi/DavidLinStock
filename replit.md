@@ -47,8 +47,10 @@ shared/
 3. **Price Charts**: 30/90/180-day interactive price history charts
 4. **MACD Indicator**: Technical analysis with MACD, signal line, histogram
 5. **Analyst Ratings**: Aggregated Buy/Sell ratings from analysts
-6. **Watchlist**: Save stocks without login using anonymous UUID
-7. **Dark Mode**: System/light/dark theme support
+6. **Zacks Rating**: 1-5 scale rating (Strong Buy to Strong Sell)
+7. **Watchlist Table**: Table view with sortable columns (price, change, P/E, Zacks)
+8. **Watchlist Cards**: Alternative card view for watchlist
+9. **Dark Mode**: System/light/dark theme support
 
 ## API Endpoints
 - `GET /api/stocks/search?query={ticker}` - Search stocks

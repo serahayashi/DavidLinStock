@@ -80,12 +80,22 @@ export type WatchlistItem = z.infer<typeof watchlistItemSchema>;
 export const insertWatchlistItemSchema = watchlistItemSchema.omit({ id: true, addedAt: true });
 export type InsertWatchlistItem = z.infer<typeof insertWatchlistItemSchema>;
 
+export const zacksRatingSchema = z.object({
+  symbol: z.string(),
+  rank: z.number().min(1).max(5),
+  rankText: z.string(),
+  updatedAt: z.string().nullable(),
+});
+
+export type ZacksRating = z.infer<typeof zacksRatingSchema>;
+
 export const stockDetailSchema = z.object({
   quote: stockQuoteSchema,
   metrics: stockMetricsSchema,
   priceHistory: z.array(priceHistoryPointSchema),
   macd: z.array(macdDataSchema),
   analystRatings: analystRatingSchema.nullable(),
+  zacksRating: zacksRatingSchema.nullable(),
 });
 
 export type StockDetail = z.infer<typeof stockDetailSchema>;

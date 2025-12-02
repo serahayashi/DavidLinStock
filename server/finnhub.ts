@@ -5,8 +5,12 @@ import type {
   MACDData,
   AnalystRating,
   StockSearchResult,
-  StockDetail 
+  StockDetail,
+  ZacksRating
 } from "@shared/schema";
+
+// @ts-ignore - zacks-api doesn't have type definitions
+import * as zacksApi from "zacks-api";
 
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
 const ALPHA_VANTAGE_API_KEY = process.env.ALPHA_VANTAGE_API_KEY;
@@ -320,13 +324,34 @@ export async function getAnalystRatings(symbol: string): Promise<AnalystRating |
   }
 }
 
+export async function getZacksRating(symbol: string): Promise<ZacksRating | null> {
+  try {
+    const data = await zacksApi.getData(symbol.toUpperCase());
+    
+    if (!data || !data.zacksRank) {
+      return null;
+    }
+
+    return {
+      symbol: symbol.toUpperCase(),
+      rank: parseInt(data.zacksRank, 10),
+      rankText: data.zacksRankText || "",
+      updatedAt: data.updatedAt || null,
+    };
+  } catch (error) {
+    console.error("Error fetching Zacks rating:", error);
+    return null;
+  }
+}
+
 export async function getStockDetail(symbol: string): Promise<StockDetail | null> {
   try {
-    const [quote, metrics, priceHistory, analystRatings] = await Promise.all([
+    const [quote, metrics, priceHistory, analystRatings, zacksRating] = await Promise.all([
       getQuote(symbol),
       getMetrics(symbol),
       getPriceHistory(symbol, 180),
       getAnalystRatings(symbol),
+      getZacksRating(symbol),
     ]);
 
     if (!quote) {
@@ -341,6 +366,7 @@ export async function getStockDetail(symbol: string): Promise<StockDetail | null
       priceHistory,
       macd,
       analystRatings,
+      zacksRating,
     };
   } catch (error) {
     console.error("Error fetching stock detail:", error);

@@ -10,6 +10,7 @@ import { PriceChange } from "@/components/price-change";
 import { PriceChart } from "@/components/price-chart";
 import { MACDChart } from "@/components/macd-chart";
 import { AnalystRatings } from "@/components/analyst-ratings";
+import { ZacksRatingDisplay } from "@/components/zacks-rating";
 import { MetricCard } from "@/components/metric-card";
 import { WatchlistButton } from "@/components/watchlist-button";
 import type { StockDetail } from "@shared/schema";
@@ -167,40 +168,40 @@ export default function StockDetailPage() {
             <div className="grid grid-cols-2 gap-4">
               <MetricCard
                 label="P/E Ratio"
-                value={data?.metrics.peRatio}
+                value={data?.metrics.peRatio ?? null}
                 tooltip="Price-to-Earnings ratio measures a company's current stock price relative to its per-share earnings. A high P/E could mean a stock is overvalued, or investors expect high growth rates."
                 isLoading={isLoading}
               />
               <MetricCard
                 label="Market Cap"
-                value={data?.metrics.marketCap}
+                value={data?.metrics.marketCap ?? null}
                 format="compact"
                 tooltip="Market capitalization is the total market value of a company's outstanding shares. It's calculated by multiplying the stock price by the number of shares."
                 isLoading={isLoading}
               />
               <MetricCard
                 label="52W High"
-                value={data?.metrics.high52Week}
+                value={data?.metrics.high52Week ?? null}
                 format="currency"
                 tooltip="The highest price at which the stock has traded during the past 52 weeks (one year)."
                 isLoading={isLoading}
               />
               <MetricCard
                 label="52W Low"
-                value={data?.metrics.low52Week}
+                value={data?.metrics.low52Week ?? null}
                 format="currency"
                 tooltip="The lowest price at which the stock has traded during the past 52 weeks (one year)."
                 isLoading={isLoading}
               />
               <MetricCard
                 label="Beta"
-                value={data?.metrics.beta}
+                value={data?.metrics.beta ?? null}
                 tooltip="Beta measures a stock's volatility compared to the overall market. A beta greater than 1 indicates higher volatility, while less than 1 indicates lower volatility."
                 isLoading={isLoading}
               />
               <MetricCard
                 label="EPS"
-                value={data?.metrics.eps}
+                value={data?.metrics.eps ?? null}
                 format="currency"
                 tooltip="Earnings Per Share represents the portion of a company's profit allocated to each outstanding share of common stock."
                 isLoading={isLoading}
@@ -209,6 +210,11 @@ export default function StockDetailPage() {
 
             <AnalystRatings 
               ratings={data?.analystRatings ?? null}
+              isLoading={isLoading}
+            />
+
+            <ZacksRatingDisplay
+              rating={data?.zacksRating ?? null}
               isLoading={isLoading}
             />
 
